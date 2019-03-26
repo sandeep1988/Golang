@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"fmt"
+	"greet"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -26,22 +27,26 @@ type Resource struct {
 
 var db *gorm.DB
 var err error
+var name string
 
 func main() {
 	router := mux.NewRouter()
 	db, err = gorm.Open("postgres", "host=localhost port=5432 user=postgres dbname=calhounio_demo password=postgres")
 	if err != nil {
-		panic("failed to connect database")
+    log.Print("failed to connect database")
 	}
 
 	defer db.Close()
 
 	db.AutoMigrate(&Resource{})
 	fmt.Println("DB set")
+	fmt.Println(greet.Morning)
+	fmt.Printf("Name: %s\n", name)
 
 	router.HandleFunc("/resources", GetResources).Methods("GET")
 	router.HandleFunc("/resources/{id}", GetResource).Methods("GET")
 	router.HandleFunc("/resources", CreateResource).Methods("POST")
+	router.HandleFunc("/resources/{id}", UpdateResource).Methods("PUT")
 	router.HandleFunc("/resources/{id}", DeleteResource).Methods("DELETE")
 
     handler := cors.Default().Handler(router)
@@ -69,6 +74,14 @@ func CreateResource(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&resource)
 }
 
+func UpdateResource(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	var resource Resource
+	db.First(&resource, params["id"]).Update(json.NewDecoder(r.Body).Decode(&resource))
+	db.Save(&resource)
+	json.NewEncoder(w).Encode(&resource)
+}
+
 func DeleteResource(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	var resource Resource
@@ -79,4 +92,9 @@ func DeleteResource(w http.ResponseWriter, r *http.Request) {
 	var resources []Resource
 	db.Find(&resources)
 	json.NewEncoder(w).Encode(&resources)
+}
+
+func init() {
+  fmt.Println("This will get called on main initialization")
+  name = "Sandeep Chourey"
 }
